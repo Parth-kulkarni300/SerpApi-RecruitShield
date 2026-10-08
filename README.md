@@ -1,6 +1,7 @@
 # RecruitShield AI — Autonomous Recruiter Co-Pilot
 
-> 🏆 **Built for First Commit Hackathon 2026** — *"Learning is more important than perfection."*
+> 🏆 **Originally built for First Commit Hackathon 2026** — *"Learning is more important than perfection."*
+> 🔎 **Extended for SerpApi India Hackathon 2026** with live, evidence-cited employer verification — see [Live Employer Verification](#-live-employer-verification-serpapi).
 
 **RecruitShield AI** is an intelligent candidate discovery and integrity auditing platform that takes a raw candidate database and produces a bias-free, fraud-scrubbed, semantically-ranked shortlist — all powered by an autonomous AI agent loop.
 
@@ -107,6 +108,37 @@ Key ranking invariants are verified by a pytest test suite (`tests/test_rank_sco
 
 ---
 
+## 🔎 Live Employer Verification (SerpApi)
+
+> **Pre-existing project disclosure (SerpApi India Hackathon rules):** RecruitShield AI — the ranking pipeline, 5-Point Anomaly Firewall, agent console and dashboard — existed before this hackathon. The work submitted for SerpApi India Hackathon 2026 is the live-verification layer described below (`backend/serp_client.py`, `backend/serp_verifier.py`, the firewall/agent/API integration and `tests/test_serpapi_integration.py`); see the commit history for exactly what changed.
+
+**The gap it closes.** Firewall rules 4 & 5 ("job started before the company existed" / "tenure longer than the company's age") previously relied on a hand-researched table of ~60 employers. Any employer outside that table was silently unverifiable.
+
+**What SerpApi does now.** For an employer that is *not* in the built-in table, the firewall asks Google (via the SerpApi `google` engine) for the company's founding year and uses the Knowledge Graph card as evidence. Every flag it raises cites its source:
+
+```
+Worked at NewCo Technologies starting in 2015, but company was founded in 2020.
+[live-verified via SerpApi: https://newco.example]
+```
+
+**Designed to avoid false purges** (a wrong flag hurts a real candidate):
+- The built-in table always wins; live lookups only fill gaps.
+- Only a **high-confidence** match — a Knowledge Graph card whose title matches the employer name — can flag a profile. Loose text-snippet matches are reported by the API as *low* confidence and never purge anyone.
+- No evidence means **"unknown"**, never "fraud".
+
+**Built for a free quota.** Results (including empty ones) are cached on disk for 30 days, live requests are capped per process (`SERPAPI_MAX_LIVE_CALLS`, default 50), failures never crash the audit, and with no `SERPAPI_API_KEY` the app runs fully offline exactly as before.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /serpapi/status` | Is live verification active? Quota used by this process and (if available) remaining on the account. Never returns the key. |
+| `GET /serpapi/verify_company?name=<employer>` | Live founding-year lookup with evidence: year, matched entity, source link, confidence. |
+
+Live lookups also appear in the **Agent Execution Console** (`/agent_logs`) as `SERPAPI_VERIFY` events.
+
+**Honest limitations:** only employer founding years are verified live so far (not degrees, skills or titles); coverage depends on whether Google shows a Knowledge Graph card for the employer; and a very small or brand-new company may simply return "unverified".
+
+---
+
 ## 📂 Project Structure
 
 ```
@@ -121,6 +153,8 @@ Key ranking invariants are verified by a pytest test suite (`tests/test_rank_sco
 │   ├── main.py                     # FastAPI server, REST endpoints, startup logic
 │   ├── agent.py                    # Autonomous agent — orchestrates audit, filter, rank, reason
 │   ├── ranker.py                   # Core scoring engine: honeypot rules, embeddings, hybrid scorer
+│   ├── serp_client.py              # SerpApi client: persistent cache, call budget, graceful degradation
+│   ├── serp_verifier.py            # Live employer verification (founding year + cited evidence)
 │   ├── rank.py                     # Utility ranking functions
 │   ├── embed_candidates.py         # Offline BGE embedding pre-computation script
 │   └── sample_candidates.jsonl     # Bundled demo candidate dataset (14 profiles)
@@ -130,7 +164,8 @@ Key ranking invariants are verified by a pytest test suite (`tests/test_rank_sco
 │       └── App.tsx                 # Full React + TypeScript dashboard (~5000 lines)
 │
 └── tests/
-    └── test_rank_scoring.py        # Pytest unit tests for ranking logic
+    ├── test_rank_scoring.py        # Pytest unit tests for ranking logic
+    └── test_serpapi_integration.py # Mocked tests for the SerpApi layer (no network, no quota)
 ```
 
 ---
@@ -145,8 +180,8 @@ Key ranking invariants are verified by a pytest test suite (`tests/test_rank_sco
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/Parth-kulkarni300/Beginner-s-Paradise-recruit.git
-cd Beginner-s-Paradise-recruit
+git clone https://github.com/Parth-kulkarni300/SerpApi-RecruitShield.git
+cd SerpApi-RecruitShield
 
 # 2. Create a virtual environment
 python -m venv venv
@@ -158,7 +193,7 @@ pip install -r requirements.txt
 
 # 4. Set up environment variables
 cp .env.example .env
-# Edit .env to add your GEMINI_API_KEY and (optional) HF_TOKEN
+# Edit .env to add your GEMINI_API_KEY and (optional) HF_TOKEN and SERPAPI_API_KEY
 
 # 5. Run the backend
 uvicorn backend.main:app --port 8000 --reload
@@ -200,6 +235,8 @@ python backend/embed_candidates.py --candidates backend/sample_candidates.jsonl
 |---|---|---|
 | `GEMINI_API_KEY` | Yes | Google Gemini API key for LLM reasoning |
 | `HF_TOKEN` | No | Hugging Face token — routes embeddings through HF Inference API instead of loading locally |
+| `SERPAPI_API_KEY` | No | SerpApi key — enables live employer verification in the Anomaly Firewall (runs offline without it) |
+| `SERPAPI_MAX_LIVE_CALLS` | No | Max live SerpApi requests per server process (default `50`) |
 | `CANDIDATES_PATH` | No | Path to your custom `candidates.jsonl` dataset |
 | `EMBEDDING_MODEL` | No | Overrides model (default: `BAAI/bge-base-en-v1.5`) |
 
