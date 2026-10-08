@@ -589,6 +589,41 @@ def get_honeypots():
         "honeypots": agent_mod.HONEYPOT_CANDIDATES
     }
 
+@app.get("/serpapi/status")
+def serpapi_status():
+    """Reports whether live SerpApi verification is active and how much quota this process used.
+    Never returns the API key itself."""
+    from backend import serp_client
+    return {
+        "enabled": serp_client.is_enabled(),
+        "usage_this_process": serp_client.get_stats(),
+        "live_call_budget": serp_client.max_live_calls(),
+        "account": serp_client.account_info(),
+    }
+
+@app.get("/serpapi/verify_company")
+def serpapi_verify_company(name: str):
+    """Looks up an employer's founding year live via SerpApi (Google Knowledge Graph) and returns the
+    evidence (year, matched entity, source link, confidence). This is the same check the firewall
+    uses for employers that are not in the built-in reference table."""
+    from backend import serp_client
+    from backend.serp_verifier import lookup_company
+    from backend.ranker import FOUNDING_YEARS
+
+    if not name or not name.strip():
+        raise HTTPException(status_code=400, detail="Provide a company name.")
+    if name in FOUNDING_YEARS:
+        return {"company": name, "founded_year": FOUNDING_YEARS[name], "confidence": "reference_table",
+                "source": "built-in reference table", "live_lookup_performed": False}
+    if not serp_client.is_enabled():
+        raise HTTPException(status_code=503, detail="SerpApi is not configured. Set SERPAPI_API_KEY to enable live verification.")
+    evidence = lookup_company(name)
+    if not evidence:
+        return {"company": name, "founded_year": None, "confidence": "unverified",
+                "detail": "No entity-matched founding year found. Treated as unknown (never as fraud).",
+                "live_lookup_performed": True}
+    return {**evidence, "live_lookup_performed": True}
+
 @app.get("/export")
 def export_shortlist_excel():
     """Generates the final submission.xlsx file on the fly and downloads it."""

@@ -4,6 +4,7 @@ import logging
 import numpy as np
 from pathlib import Path
 from backend.ranker import is_honeypot, check_honeypot_reasons, is_consulting_only, score_candidate, rank_candidates
+from backend import serp_client
 
 import datetime
 
@@ -126,6 +127,19 @@ def audit_candidate_integrity() -> str:
         f"Scanned candidate database across 11 Honeypot rules. Purged {honeypot_count} synthetic trap profiles from {initial_count} initial candidates.",
         details=f"Disqualified {honeypot_count} trap profiles with logical contradictions. Active pool remaining: {len(CANDIDATES)}"
     )
+
+    if serp_client.is_enabled():
+        s = serp_client.get_stats()
+        log_agent_event(
+            "SERPAPI_VERIFY",
+            "serp_verifier.get_live_founding_year",
+            f"Live employer verification via SerpApi: {s['live_calls']} live lookup(s), {s['cache_hits']} served from cache.",
+            details=(
+                "Employers missing from the built-in reference table were checked against Google Knowledge Graph "
+                f"results (budget blocked: {s['budget_blocked']}, errors: {s['errors']}). "
+                "Only high-confidence, entity-matched evidence can flag a profile; every flag cites its source link."
+            )
+        )
 
     summary = (
         f"Successfully ran the 5-Point Anomaly Firewall across {initial_count} candidate profiles.\n"
