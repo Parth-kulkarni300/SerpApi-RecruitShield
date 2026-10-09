@@ -113,6 +113,18 @@ def _cache_key(engine: str, query: str, params: dict) -> str:
     return f"{engine}|{query.strip().lower()}|{extras}"
 
 
+def _log_serp_tool_call(engine: str, query: str, source: str):
+    try:
+        from backend.agent import log_agent_event
+        log_agent_event(
+            "SERPAPI_TOOL_CALL",
+            f"SerpApi ({engine})",
+            f"Executed SerpApi '{engine}' tool call: '{query}' [{source}]",
+            details=f"Engine: {engine}, Query: '{query}', Source: {source}"
+        )
+    except Exception:
+        pass
+
 def search(query: str, engine: str = "google", **params) -> Optional[dict]:
     """Runs one SerpApi search and returns the parsed JSON, or ``None`` if unavailable.
 
@@ -128,6 +140,7 @@ def search(query: str, engine: str = "google", **params) -> Optional[dict]:
         hit = cache.get(key)
         if hit and (time.time() - hit.get("ts", 0)) < CACHE_TTL_SECONDS:
             _STATS["cache_hits"] += 1
+            _log_serp_tool_call(engine, query, "Cache Hit (0 Quota Spent)")
             return {**hit["data"], "_from_cache": True}
 
         if _STATS["live_calls"] >= max_live_calls():
@@ -149,6 +162,8 @@ def search(query: str, engine: str = "google", **params) -> Optional[dict]:
                 data = {"organic_results": [], "search_metadata": data.get("search_metadata", {})}
             else:
                 raise RuntimeError(str(data.get("error") or f"HTTP {resp.status_code}")[:200])
+        
+        _log_serp_tool_call(engine, query, "Live API Search")
     except Exception as exc:
         with _LOCK:
             _STATS["errors"] += 1
