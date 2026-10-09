@@ -1297,7 +1297,6 @@ export default function RecruitShieldApp() {
 
   const [showAgentConsoleModal, setShowAgentConsoleModal] = useState(false);
   const [breakdownCandidate, setBreakdownCandidate] = useState<Candidate | null>(null);
-  const [mapLocationQuery, setMapLocationQuery] = useState<string | null>(null);
 
   const fetchHoneypots = async () => {
     setHoneypotLoading(true);
@@ -2455,6 +2454,7 @@ function Pipeline({
 }) {
   const [isAnalyseModalOpen, setIsAnalyseModalOpen] = useState(false);
   const [serpReportCandidate, setSerpReportCandidate] = useState<any>(null);
+  const [mapLocationQuery, setMapLocationQuery] = useState<string | null>(null);
 
   const toggleExpBucket = (b: string) =>
     setExpBuckets(
