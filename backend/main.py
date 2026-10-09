@@ -603,26 +603,46 @@ def serpapi_status():
 
 @app.get("/serpapi/verify_company")
 def serpapi_verify_company(name: str):
-    """Looks up an employer's founding year live via SerpApi (Google Knowledge Graph) and returns the
-    evidence (year, matched entity, source link, confidence). This is the same check the firewall
-    uses for employers that are not in the built-in reference table."""
+    """Looks up an employer's founding year live via SerpApi (Google Knowledge Graph) and live news
+    via SerpApi Google News engine."""
     from backend import serp_client
     from backend.serp_verifier import lookup_company
     from backend.ranker import FOUNDING_YEARS
 
     if not name or not name.strip():
         raise HTTPException(status_code=400, detail="Provide a company name.")
-    if name in FOUNDING_YEARS:
-        return {"company": name, "founded_year": FOUNDING_YEARS[name], "confidence": "reference_table",
-                "source": "built-in reference table", "live_lookup_performed": False}
-    if not serp_client.is_enabled():
-        raise HTTPException(status_code=503, detail="SerpApi is not configured. Set SERPAPI_API_KEY to enable live verification.")
-    evidence = lookup_company(name)
-    if not evidence:
-        return {"company": name, "founded_year": None, "confidence": "unverified",
-                "detail": "No entity-matched founding year found. Treated as unknown (never as fraud).",
-                "live_lookup_performed": True}
-    return {**evidence, "live_lookup_performed": True}
+        
+    company_name = name.strip()
+    result = {"company": company_name, "founded_year": None, "confidence": "unverified", "news": [], "live_lookup_performed": False}
+    
+    if company_name in FOUNDING_YEARS:
+        result["founded_year"] = FOUNDING_YEARS[company_name]
+        result["confidence"] = "reference_table"
+        result["source"] = "built-in reference table"
+    elif serp_client.is_enabled():
+        evidence = lookup_company(company_name)
+        if evidence:
+            result.update(evidence)
+            result["live_lookup_performed"] = True
+
+    # Multi-engine SerpApi feature: Live News Lookup via SerpApi Google News API
+    if serp_client.is_enabled():
+        try:
+            news_resp = serp_client.search(f"{company_name} company", engine="google_news", hl="en", gl="in")
+            if news_resp and news_resp.get("news_results"):
+                top_news = []
+                for item in news_resp["news_results"][:2]:
+                    top_news.append({
+                        "title": item.get("title"),
+                        "source": (item.get("source") or {}).get("name") if isinstance(item.get("source"), dict) else str(item.get("source") or "Google News"),
+                        "date": item.get("date") or "Recent",
+                        "link": item.get("link")
+                    })
+                result["news"] = top_news
+        except Exception as e:
+            logger.warning(f"Live news lookup for '{company_name}' skipped: {e}")
+
+    return result
 
 @app.get("/export")
 def export_shortlist_excel():

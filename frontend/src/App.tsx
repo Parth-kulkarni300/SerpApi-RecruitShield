@@ -3543,6 +3543,43 @@ function SerpReportModal({
                     <ExternalLink size={12} />
                   </a>
                 </div>
+
+                {liveData?.news && liveData.news.length > 0 && (
+                  <div style={{ marginTop: "6px", paddingTop: "8px", borderTop: "1px dashed rgba(255, 255, 255, 0.08)" }}>
+                    <div style={{ fontSize: "11px", fontWeight: 700, color: "#f59e0b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px", display: "flex", alignItems: "center", gap: "4px" }}>
+                      <span>📰 SerpApi Google News Radar:</span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+                      {liveData.news.map((newsItem: any, nIdx: number) => (
+                        <a
+                          key={nIdx}
+                          href={newsItem.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            fontSize: "12px",
+                            color: "#e2e8f0",
+                            textDecoration: "none",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            background: "rgba(245, 158, 11, 0.06)",
+                            border: "1px solid rgba(245, 158, 11, 0.18)",
+                            padding: "6px 9px",
+                            borderRadius: "6px"
+                          }}
+                        >
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, marginRight: "8px" }}>
+                            {newsItem.title}
+                          </span>
+                          <span style={{ fontSize: "11px", color: "#fbbf24", flexShrink: 0, fontWeight: 600 }}>
+                            {newsItem.source} ↗
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
