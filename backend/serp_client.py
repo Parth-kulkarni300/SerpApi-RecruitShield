@@ -29,6 +29,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+try:
+    from serpapi import GoogleSearch
+except ImportError:
+    try:
+        from serpapi.google_search import GoogleSearch
+    except ImportError:
+        GoogleSearch = None
+
 logger = logging.getLogger("recruiter-serpapi")
 
 SERPAPI_SEARCH_URL = "https://serpapi.com/search.json"
