@@ -2172,6 +2172,10 @@ function WorkspaceHeader({
       </button>
       <Logo compact />
       <div className="flex items-center gap-4">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', color: '#6ee7b7', fontWeight: 600 }}>
+          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
+          <span>SerpApi Shield Active</span>
+        </div>
         <span className="micro-label text-muted-foreground">{step}</span>
         <StatusDot />
         {onOpenHowItWorks && (
