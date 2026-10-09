@@ -91,13 +91,44 @@ def get_sentence_model():
                     print(f"Warning: Failed to load SentenceTransformer: {e}")
     return SENTENCE_MODEL
 
+FASTEMBED_MODEL = None
+_FASTEMBED_LOCK = threading.Lock()
+
+def get_fastembed_model():
+    global FASTEMBED_MODEL
+    if FASTEMBED_MODEL is None:
+        with _FASTEMBED_LOCK:
+            if FASTEMBED_MODEL is None:
+                from fastembed import TextEmbedding
+                model_name = os.environ.get("EMBEDDING_MODEL", "BAAI/bge-base-en-v1.5")
+                FASTEMBED_MODEL = TextEmbedding(model_name=model_name)
+    return FASTEMBED_MODEL
+
 def encode_texts(texts, normalize=True):
     """
-    Encodes text or list of texts into embeddings.
-    If HF_TOKEN environment variable is present, routes through Hugging Face's serverless
-    Inference API for BAAI/bge-base-en-v1.5 to consume 0MB local server RAM (ideal for Render free tier).
-    Otherwise falls back to local SentenceTransformer (BAAI/bge-base-en-v1.5 or all-MiniLM-L6-v2).
+    Encodes text or list of texts into 768-dimensional neural embeddings (BAAI/bge-base-en-v1.5).
+    First attempts local FastEmbed (ONNX Runtime, fast & zero PyTorch/HF API bugs).
+    Falls back to Hugging Face Inference API or local SentenceTransformer if needed.
     """
+    try:
+        fe_model = get_fastembed_model()
+        if fe_model is not None:
+            input_texts = [texts] if isinstance(texts, str) else texts
+            embeddings = list(fe_model.embed(input_texts))
+            vecs = np.array(embeddings, dtype=np.float32)
+            if isinstance(texts, str):
+                vecs = vecs[0]
+            if normalize:
+                if vecs.ndim == 1:
+                    norm = np.linalg.norm(vecs)
+                    return vecs / (norm + 1e-9)
+                else:
+                    norms = np.linalg.norm(vecs, axis=1, keepdims=True)
+                    return vecs / (norms + 1e-9)
+            return vecs
+    except Exception as fe_err:
+        print(f"FastEmbed note: {fe_err}. Falling back to Hugging Face API / SentenceTransformer.")
+
     import requests
     hf_token = os.environ.get("HF_TOKEN")
     model_name = os.environ.get("EMBEDDING_MODEL", "BAAI/bge-base-en-v1.5")
