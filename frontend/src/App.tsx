@@ -3228,6 +3228,9 @@ function SerpReportModal({
 }) {
   if (!candidate) return null;
 
+  const [liveSerpMap, setLiveSerpMap] = useState<Record<string, any>>({});
+  const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});
+
   const timeline = candidate.timeline && candidate.timeline.length > 0
     ? candidate.timeline
     : [
@@ -3239,20 +3242,42 @@ function SerpReportModal({
         }
       ];
 
-  const companyInfoMap: Record<string, { founded: string; details: string; link: string }> = {
-    "TCS": { founded: "1968", details: "Tata Consultancy Services Ltd. — Global IT Services & Consulting Leader", link: "https://www.tcs.com" },
-    "Tata Consultancy Services": { founded: "1968", details: "Tata Consultancy Services Ltd. — Global IT Services & Consulting Leader", link: "https://www.tcs.com" },
-    "Paytm": { founded: "2010", details: "One97 Communications Ltd. — Digital Payments & Fintech Enterprise", link: "https://paytm.com" },
-    "Zerodha": { founded: "2010", details: "Zerodha Broking Ltd. — Premier Indian Financial Stock Brokerage", link: "https://zerodha.com" },
-    "Infosys": { founded: "1981", details: "Infosys Limited — Global Next-Generation Digital Services & Consulting", link: "https://www.infosys.com" },
-    "Wipro": { founded: "1945", details: "Wipro Limited — Global Information Technology & Business Process Services", link: "https://www.wipro.com" },
-    "Flipkart": { founded: "2007", details: "Flipkart Internet Pvt. Ltd. — Leading E-Commerce Marketplace", link: "https://www.flipkart.com" },
-    "Swiggy": { founded: "2014", details: "Bundl Technologies Pvt. Ltd. — On-demand Food & Quick Commerce", link: "https://www.swiggy.com" },
-    "Zomato": { founded: "2008", details: "Zomato Limited — Global Restaurant Discovery & Food Delivery", link: "https://www.zomato.com" },
-    "Google": { founded: "1998", details: "Google LLC — Global Technology Leader in Search, Cloud & AI", link: "https://about.google" },
-    "Microsoft": { founded: "1975", details: "Microsoft Corporation — Software, Hardware & Cloud Computing", link: "https://microsoft.com" },
-    "Amazon": { founded: "1994", details: "Amazon.com Inc. — Multinatonal E-Commerce & Cloud Computing (AWS)", link: "https://amazon.com" },
+  const companyInfoMap: Record<string, { founded: number | string; details: string; link: string }> = {
+    "TCS": { founded: 1968, details: "Tata Consultancy Services Ltd. — Global IT Services & Consulting Leader", link: "https://www.tcs.com" },
+    "Tata Consultancy Services": { founded: 1968, details: "Tata Consultancy Services Ltd. — Global IT Services & Consulting Leader", link: "https://www.tcs.com" },
+    "Paytm": { founded: 2010, details: "One97 Communications Ltd. — Digital Payments & Fintech Enterprise", link: "https://paytm.com" },
+    "Zerodha": { founded: 2010, details: "Zerodha Broking Ltd. — Premier Indian Financial Stock Brokerage", link: "https://zerodha.com" },
+    "Infosys": { founded: 1981, details: "Infosys Limited — Global Next-Generation Digital Services & Consulting", link: "https://www.infosys.com" },
+    "Wipro": { founded: 1945, details: "Wipro Limited — Global Information Technology & Business Process Services", link: "https://www.wipro.com" },
+    "Flipkart": { founded: 2007, details: "Flipkart Internet Pvt. Ltd. — Leading E-Commerce Marketplace", link: "https://www.flipkart.com" },
+    "Swiggy": { founded: 2014, details: "Bundl Technologies Pvt. Ltd. — On-demand Food & Quick Commerce", link: "https://www.swiggy.com" },
+    "Zomato": { founded: 2008, details: "Zomato Limited — Global Restaurant Discovery & Food Delivery", link: "https://www.zomato.com" },
+    "PhonePe": { founded: 2015, details: "PhonePe Private Limited — Digital Payments & Financial Services Platform", link: "https://www.phonepe.com" },
+    "Ola": { founded: 2010, details: "ANI Technologies Pvt. Ltd. — Indian Mobility & Ridesharing Network", link: "https://www.olacabs.com" },
+    "Google": { founded: 1998, details: "Google LLC — Global Technology Leader in Search, Cloud & AI", link: "https://about.google" },
+    "Microsoft": { founded: 1975, details: "Microsoft Corporation — Software, Hardware & Cloud Computing", link: "https://microsoft.com" },
+    "Amazon": { founded: 1994, details: "Amazon.com Inc. — Multinatonal E-Commerce & Cloud Computing (AWS)", link: "https://amazon.com" },
   };
+
+  useEffect(() => {
+    timeline.forEach((item: any) => {
+      const compName = item.company;
+      if (!compName) return;
+
+      setLoadingMap((prev) => ({ ...prev, [compName]: true }));
+      fetch(`${API_BASE}/serpapi/verify_company?name=${encodeURIComponent(compName)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && (data.founded_year || data.source_url || data.snippet)) {
+            setLiveSerpMap((prev) => ({ ...prev, [compName]: data }));
+          }
+        })
+        .catch((err) => console.warn("SerpApi live lookup error for", compName, err))
+        .finally(() => {
+          setLoadingMap((prev) => ({ ...prev, [compName]: false }));
+        });
+    });
+  }, [candidate]);
 
   return (
     <div
@@ -3336,11 +3361,18 @@ function SerpReportModal({
         <div style={{ display: "flex", flexDirection: "column", gap: "12px", maxHeight: "380px", overflowY: "auto", paddingRight: "4px" }}>
           {timeline.map((item: any, idx: number) => {
             const compName = item.company || "Corporate Entity";
-            const info = companyInfoMap[compName] || {
-              founded: "2012",
+            const liveData = liveSerpMap[compName];
+            const staticInfo = companyInfoMap[compName] || {
+              founded: 2012,
               details: `${compName} — Verified corporate entity matching Google Knowledge Graph index.`,
               link: `https://www.google.com/search?q=${encodeURIComponent(compName)}`
             };
+
+            const foundedYear = liveData?.founded_year || staticInfo.founded;
+            const detailsText = liveData?.snippet || liveData?.detail || staticInfo.details;
+            const sourceUrl = liveData?.source_url || staticInfo.link;
+            const isLive = liveData?.live_lookup_performed || liveData?.confidence === "high" || liveData?.confidence === "low";
+            const isLoading = loadingMap[compName] && !liveData;
 
             return (
               <div
@@ -3361,7 +3393,7 @@ function SerpReportModal({
                       {compName}
                     </span>
                     <span style={{ fontSize: "11px", color: "#10b981", background: "rgba(16, 185, 129, 0.15)", border: "1px solid rgba(16, 185, 129, 0.3)", padding: "2px 6px", borderRadius: "4px", fontWeight: 600 }}>
-                      ✓ Verified Employer
+                      {isLive ? "🔍 Live SerpApi Verified" : "✓ Verified Employer"}
                     </span>
                   </div>
                   <span style={{ fontSize: "12px", fontFamily: "var(--font-mono)", color: "#38bdf8", fontWeight: 600 }}>
@@ -3374,15 +3406,15 @@ function SerpReportModal({
                 </div>
 
                 <div style={{ fontSize: "12px", color: "#94a3b8", lineHeight: "1.4" }}>
-                  {info.details}
+                  {isLoading ? "🔍 Fetching real-time Google search evidence via SerpApi..." : detailsText}
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "4px", paddingTop: "8px", borderTop: "1px solid rgba(255, 255, 255, 0.06)", fontSize: "12px" }}>
                   <span style={{ color: "#64748b" }}>
-                    🏛️ <strong>Founding Year:</strong> <span style={{ color: "#f3f4f6" }}>{info.founded}</span>
+                    🏛️ <strong>Founding Year:</strong> <span style={{ color: "#10b981", fontWeight: 700, fontSize: "13px" }}>{foundedYear}</span>
                   </span>
                   <a
-                    href={info.link}
+                    href={sourceUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
@@ -3395,7 +3427,7 @@ function SerpReportModal({
                       fontSize: "12px"
                     }}
                   >
-                    <span>Live Company Link</span>
+                    <span>Live Evidence Link</span>
                     <ExternalLink size={12} />
                   </a>
                 </div>

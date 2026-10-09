@@ -25,6 +25,9 @@ from pathlib import Path
 from typing import Optional
 
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger("recruiter-serpapi")
 
