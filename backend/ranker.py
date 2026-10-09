@@ -174,11 +174,15 @@ def check_honeypot_reasons(cand):
         founding_year = FOUNDING_YEARS.get(comp)
         live_note = ""
         if founding_year is None:
-            from backend.serp_verifier import get_live_founding_year
+            from backend.serp_verifier import get_live_founding_year, verify_employer_legitimacy
             live = get_live_founding_year(comp)
             if live:
                 founding_year = live["founded_year"]
                 live_note = f" [live-verified via SerpApi: {live['source_url']}]"
+            else:
+                ghost = verify_employer_legitimacy(comp)
+                if ghost and ghost.get("is_ghost"):
+                    reasons.append(ghost["reason"])
         if founding_year is not None:
             start_date_str = job.get("start_date")
             if start_date_str:

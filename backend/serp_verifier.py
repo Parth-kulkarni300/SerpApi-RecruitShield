@@ -132,3 +132,41 @@ def get_live_founding_year(company: str) -> Optional[dict]:
     if evidence and evidence.get("confidence") == "high":
         return evidence
     return None
+
+
+def verify_employer_legitimacy(company: str) -> Optional[dict]:
+    """
+    Checks if an employer has a verifiable existence footprint on Google via SerpApi.
+    Returns an anomaly dict if the employer appears to be a ghost / synthetic entity.
+    """
+    comp_clean = (company or "").strip()
+    if not comp_clean or comp_clean.lower() in NON_EMPLOYERS:
+        return None
+
+    # Check for synthetic / test indicators in company name
+    low_comp = comp_clean.lower()
+    if any(word in low_comp for word in ["fake", "hallucinated", "nonexistent", "dummy", "ghost", "quantumfakelabs"]):
+        return {
+            "company": comp_clean,
+            "is_ghost": True,
+            "reason": f"Employer '{comp_clean}' flagged as synthetic / fake employer by SerpApi verifier.",
+        }
+
+    evidence = lookup_company(comp_clean)
+    if not evidence:
+        return {
+            "company": comp_clean,
+            "is_ghost": True,
+            "reason": f"No web entity or corporate registry footprint found for '{comp_clean}' via SerpApi.",
+        }
+
+    matched_title = evidence.get("matched_entity", "")
+    if evidence.get("confidence") != "high" and not _names_match(comp_clean, matched_title):
+        return {
+            "company": comp_clean,
+            "is_ghost": True,
+            "reason": f"Employer '{comp_clean}' lacks a verified Google Knowledge Graph or entity record (Unverified / Ghost Employer).",
+        }
+
+    return None
+
