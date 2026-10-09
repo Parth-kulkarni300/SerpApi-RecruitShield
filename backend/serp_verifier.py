@@ -90,6 +90,23 @@ def extract_founding_year(serp_response: dict, company: str) -> Optional[dict]:
                 "matched_entity": result.get("title"),
                 "snippet": (result.get("snippet") or "")[:160],
             }
+
+    # Universal fallback for custom/unknown companies: return top Google search result snippet evidence
+    organics = serp_response.get("organic_results") or []
+    if organics:
+        top_res = organics[0]
+        m = _YEAR_RE.search(top_res.get("snippet", "") or "")
+        found_yr = int(m.group(1)) if m else None
+        return {
+            "company": company,
+            "founded_year": found_yr,
+            "confidence": "organic_web_match",
+            "source": "google_organic_search",
+            "source_url": top_res.get("link") or default_url,
+            "matched_entity": top_res.get("title") or company,
+            "snippet": (top_res.get("snippet") or f"Live Google web match for '{company}'.")[:180],
+        }
+
     return None
 
 
