@@ -191,37 +191,23 @@ def check_honeypot_reasons(cand):
             reasons.append(f"Expert/Advanced skill '{s['name']}' has 0 months of usage.")
             
     # 4. Job start date before company founding year & job duration exceeds company age
-    # The hardcoded FOUNDING_YEARS table is authoritative. For employers it doesn't cover,
-    # fall back to live SerpApi evidence (high-confidence Google Knowledge Graph match only);
-    # that returns None when no SERPAPI_API_KEY is configured, so offline behaviour is unchanged.
     career = cand.get("career_history", [])
     for job in career:
         comp = job.get("company", "")
-        founding_year = FOUNDING_YEARS.get(comp)
-        live_note = ""
-        if founding_year is None:
-            from backend.serp_verifier import get_live_founding_year, verify_employer_legitimacy
-            live = get_live_founding_year(comp)
-            if live:
-                founding_year = live["founded_year"]
-                live_note = f" [live-verified via SerpApi: {live['source_url']}]"
-            else:
-                ghost = verify_employer_legitimacy(comp)
-                if ghost and ghost.get("is_ghost"):
-                    reasons.append(ghost["reason"])
-        if founding_year is not None:
+        if comp in FOUNDING_YEARS:
+            founding_year = FOUNDING_YEARS[comp]
             start_date_str = job.get("start_date")
             if start_date_str:
                 try:
                     start_year = int(start_date_str.split("-")[0])
                     if start_year < founding_year:
-                        reasons.append(f"Worked at {comp} starting in {start_year}, but company was founded in {founding_year}.{live_note}")
+                        reasons.append(f"Worked at {comp} starting in {start_year}, but company was founded in {founding_year}.")
                 except (ValueError, AttributeError):
                     pass
             dur_years = job.get("duration_months", 0) / 12.0
             max_dur = CURRENT_REF_DATE.year - founding_year
             if dur_years > max_dur:
-                reasons.append(f"Job duration at {comp} is {dur_years:.1f} yrs, but company was founded {max_dur} years ago.{live_note}")
+                reasons.append(f"Job duration at {comp} is {dur_years:.1f} yrs, but company was founded {max_dur} years ago.")
                 
     return len(reasons) > 0, reasons
 
