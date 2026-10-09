@@ -64,31 +64,26 @@ _MODEL_LOAD_LOCK = threading.Lock()
 _ENCODE_LOCK = threading.Lock()
 
 def _load_model_with_fallback(model_name):
-    from sentence_transformers import SentenceTransformer
-    # Try the local cache first (no Hugging Face Hub round-trips to check freshness);
-    # only hit the network if nothing is cached yet (first run on this machine).
     try:
-        return SentenceTransformer(model_name, local_files_only=True)
-    except Exception:
-        pass
-    try:
+        from sentence_transformers import SentenceTransformer
+        try:
+            return SentenceTransformer(model_name, local_files_only=True)
+        except Exception:
+            pass
         return SentenceTransformer(model_name)
-    except Exception as e1:
-        print(f"Failed to load {model_name}, falling back to lightweight all-MiniLM-L6-v2: {e1}")
-        return SentenceTransformer('all-MiniLM-L6-v2')
+    except Exception as e:
+        return None
 
 def get_sentence_model():
     global SENTENCE_MODEL
     if SENTENCE_MODEL is None:
-        # Guards against the startup warm-up thread and a request thread (e.g. /load_demo)
-        # both racing to load the model at the same time.
         with _MODEL_LOAD_LOCK:
             if SENTENCE_MODEL is None:
                 model_name = os.environ.get("EMBEDDING_MODEL", "BAAI/bge-base-en-v1.5")
                 try:
                     SENTENCE_MODEL = _load_model_with_fallback(model_name)
                 except Exception as e:
-                    print(f"Warning: Failed to load SentenceTransformer: {e}")
+                    pass
     return SENTENCE_MODEL
 
 FASTEMBED_MODEL = None
