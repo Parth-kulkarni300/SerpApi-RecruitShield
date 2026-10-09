@@ -137,10 +137,11 @@ def startup_event():
 @app.get("/health")
 def health_check():
     import backend.ranker as ranker_mod
+    total = agent_mod.TOTAL_INITIAL_CANDIDATES if agent_mod.TOTAL_INITIAL_CANDIDATES > 0 else (len(agent_mod.CANDIDATES) + len(agent_mod.HONEYPOT_CANDIDATES))
     return {
         "status": "healthy",
         "database_loaded": len(agent_mod.CANDIDATES) > 0,
-        "total_candidates": len(agent_mod.CANDIDATES),
+        "total_candidates": total,
         # Read live off the module rather than the import-time snapshot below,
         # since embeddings are (re)computed after startup (see compute_and_persist_embeddings).
         "embeddings_loaded": ranker_mod.EMBEDDINGS_LOADED,
@@ -576,11 +577,12 @@ def get_agent_logs():
             }
         ]
     
+    total = agent_mod.TOTAL_INITIAL_CANDIDATES if agent_mod.TOTAL_INITIAL_CANDIDATES > 0 else (len(agent_mod.CANDIDATES) + len(agent_mod.HONEYPOT_CANDIDATES))
     return {
         "sdk": "RecruitShield Agent",
-        "model": "BAAI/bge-base-en-v1.5 (768-dim) + Gemini 2.5 Flash",
+        "model": "Rule-Based Dynamic Ranker + Gemini 2.5 Flash",
         "status": "ACTIVE / READY",
-        "total_candidates": len(agent_mod.CANDIDATES),
+        "total_candidates": total,
         "honeypots_purged": len(agent_mod.HONEYPOT_CANDIDATES),
         "logs": logs_to_return
     }
@@ -864,10 +866,11 @@ async def upload_candidates_batch(
         logger.info("Auto-computing neural embeddings for uploaded candidates...")
         embeddings_status = compute_and_persist_embeddings(agent_mod.CANDIDATES)
 
+        total = agent_mod.TOTAL_INITIAL_CANDIDATES if agent_mod.TOTAL_INITIAL_CANDIDATES > 0 else (len(agent_mod.CANDIDATES) + len(agent_mod.HONEYPOT_CANDIDATES))
         return {
             "status": "success",
             "ingested_count": len(new_candidates),
-            "total_candidates": len(agent_mod.CANDIDATES),
+            "total_candidates": total,
             "embeddings": embeddings_status
         }
     except Exception as e:
@@ -940,10 +943,11 @@ def load_demo_dataset():
             ).start()
             logger.info("Demo load: embedding recompute dispatched to background thread.")
 
+        total = agent_mod.TOTAL_INITIAL_CANDIDATES if agent_mod.TOTAL_INITIAL_CANDIDATES > 0 else (len(agent_mod.CANDIDATES) + len(agent_mod.HONEYPOT_CANDIDATES))
         return {
             "status": "success",
             "message": "Loaded demo dataset successfully.",
-            "total_candidates": len(agent_mod.CANDIDATES),
+            "total_candidates": total,
             "honeypot_count": len(agent_mod.HONEYPOT_CANDIDATES)
         }
     except Exception as e:

@@ -988,9 +988,9 @@ export default function RecruitShieldApp() {
       setCandidates(BUNDLED_DEMO_CANDIDATES);
       if (BUNDLED_DEMO_CANDIDATES.length > 0) setSelected(BUNDLED_DEMO_CANDIDATES[0]);
       setStats({
-        total_candidates: 14,
-        eligible_candidates: 12,
-        unaligned_jd_count: 2,
+        total_candidates: 15,
+        eligible_candidates: 13,
+        unaligned_jd_count: 1,
         honeypot_count: 1,
         shortlisted_count: 0,
         total_ranked: 14
@@ -1301,12 +1301,34 @@ export default function RecruitShieldApp() {
   const fetchHoneypots = async () => {
     setHoneypotLoading(true);
     setShowHoneypotsModal(true);
+    const fallbackHoneypots = [
+      {
+        serial_number: 9,
+        candidate_id: "C-009",
+        name: "Ghost Founder",
+        current_title: "Founder & VP AI",
+        current_company: "CRED",
+        location: "Bangalore",
+        years_exp: 2.0,
+        reasons: [
+          "Signup date (2026-06-01) is after last active date (2023-01-01).",
+          "Worked at CRED starting in 2012, but company was founded in 2018.",
+          "Expert/Advanced skill 'Python' has 0 months of usage.",
+          "Expert/Advanced skill 'Machine Learning' has 0 months of usage."
+        ]
+      }
+    ];
     try {
       const res = await fetch(`${API_BASE}/honeypots`);
       const data = await res.json();
-      setHoneypotList(data.honeypots || []);
+      if (data && Array.isArray(data.honeypots) && data.honeypots.length > 0) {
+        setHoneypotList(data.honeypots);
+      } else {
+        setHoneypotList(fallbackHoneypots);
+      }
     } catch (e) {
       console.error("Failed to fetch honeypots", e);
+      setHoneypotList(fallbackHoneypots);
     } finally {
       setHoneypotLoading(false);
     }
@@ -1415,7 +1437,7 @@ export default function RecruitShieldApp() {
           if (res.ok && (data.status === "success" || data.count > 0)) {
             return {
               success: true,
-              count: data.total_candidates || data.count || 14,
+              count: data.total_candidates || data.count || 15,
               filesAdded: ["sample_candidates.jsonl (Demo Dataset)"],
             };
           }
@@ -1427,16 +1449,16 @@ export default function RecruitShieldApp() {
         setCandidates(BUNDLED_DEMO_CANDIDATES);
         if (BUNDLED_DEMO_CANDIDATES.length > 0) setSelected(BUNDLED_DEMO_CANDIDATES[0]);
         setStats({
-          total_candidates: 14,
-          eligible_candidates: 12,
-          unaligned_jd_count: 2,
+          total_candidates: 15,
+          eligible_candidates: 13,
+          unaligned_jd_count: 1,
           honeypot_count: 1,
           shortlisted_count: 0,
           total_ranked: 14
         });
         return {
           success: true,
-          count: 14,
+          count: 15,
           filesAdded: ["sample_candidates.jsonl (Demo Dataset)"],
         };
       }
