@@ -3219,6 +3219,110 @@ function DeepDive({
   );
 }
 
+function formatToDDMMYYYY(dateStr: string): string {
+  if (!dateStr) return "N/A";
+  if (dateStr.toLowerCase().includes("present")) return "Present";
+  
+  const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    const [, yyyy, mm, dd] = isoMatch;
+    return `${dd}/${mm}/${yyyy}`;
+  }
+  
+  const yearMonthMatch = dateStr.match(/^(\d{4})-(\d{2})$/);
+  if (yearMonthMatch) {
+    const [, yyyy, mm] = yearMonthMatch;
+    return `01/${mm}/${yyyy}`;
+  }
+
+  const justYear = dateStr.match(/^(\d{4})$/);
+  if (justYear) {
+    return `01/01/${justYear[1]}`;
+  }
+
+  return dateStr;
+}
+
+function formatPeriodRange(period: string): string {
+  if (!period) return "Present";
+  if (period.includes("→")) {
+    const parts = period.split("→").map((p) => p.trim());
+    return `${formatToDDMMYYYY(parts[0])} – ${formatToDDMMYYYY(parts[1])}`;
+  }
+  if (period.includes("to")) {
+    const parts = period.split("to").map((p) => p.trim());
+    return `${formatToDDMMYYYY(parts[0])} – ${formatToDDMMYYYY(parts[1])}`;
+  }
+  if (period.includes("-") && period.length >= 15) {
+    const parts = period.split("-").map((p) => p.trim());
+    if (parts.length === 2 && parts[0].length >= 7) {
+      return `${formatToDDMMYYYY(parts[0])} – ${formatToDDMMYYYY(parts[1])}`;
+    }
+  }
+  return formatToDDMMYYYY(period);
+}
+
+const DIRECT_COMPANY_URLS: Record<string, string> = {
+  "phonepe": "https://www.phonepe.com",
+  "ola": "https://www.olacabs.com",
+  "ola cabs": "https://www.olacabs.com",
+  "zerodha": "https://zerodha.com",
+  "tcs": "https://www.tcs.com",
+  "tata consultancy services": "https://www.tcs.com",
+  "paytm": "https://paytm.com",
+  "infosys": "https://www.infosys.com",
+  "wipro": "https://www.wipro.com",
+  "flipkart": "https://www.flipkart.com",
+  "swiggy": "https://www.swiggy.com",
+  "zomato": "https://www.zomato.com",
+  "google": "https://about.google",
+  "microsoft": "https://www.microsoft.com",
+  "amazon": "https://www.amazon.com",
+  "razorpay": "https://razorpay.com",
+  "cred": "https://cred.club",
+  "meesho": "https://meesho.com",
+  "nykaa": "https://www.nykaa.com",
+  "unacademy": "https://unacademy.com",
+  "byju's": "https://byjus.com",
+  "byjus": "https://byjus.com",
+  "postman": "https://www.postman.com",
+  "freshworks": "https://www.freshworks.com",
+  "zoho": "https://www.zoho.com",
+  "cult.fit": "https://www.cult.fit",
+  "curefit": "https://www.cult.fit",
+  "urban company": "https://www.urbancompany.com",
+  "makemytrip": "https://www.makemytrip.com",
+  "lenskart": "https://www.lenskart.com",
+  "inmobi": "https://www.inmobi.com",
+  "cars24": "https://www.cars24.com",
+  "delhivery": "https://www.delhivery.com",
+  "dream11": "https://www.dream11.com",
+};
+
+function getDirectCompanyUrl(companyName: string, backendSourceUrl?: string): string {
+  const norm = (companyName || "").trim().toLowerCase();
+  if (DIRECT_COMPANY_URLS[norm]) {
+    return DIRECT_COMPANY_URLS[norm];
+  }
+  
+  for (const k of Object.keys(DIRECT_COMPANY_URLS)) {
+    if (norm.includes(k) || k.includes(norm)) {
+      return DIRECT_COMPANY_URLS[k];
+    }
+  }
+
+  if (backendSourceUrl && !backendSourceUrl.includes("google.com/search") && !backendSourceUrl.includes("serpapi.com") && !backendSourceUrl.includes("scribd.com") && !backendSourceUrl.includes("tracxn.com")) {
+    return backendSourceUrl;
+  }
+
+  const cleanName = norm.replace(/[^a-z0-9]/g, "");
+  if (cleanName.length >= 2) {
+    return `https://www.${cleanName}.com`;
+  }
+
+  return `https://www.google.com/search?q=${encodeURIComponent(companyName)}`;
+}
+
 function SerpReportModal({
   candidate,
   onClose,
@@ -3237,7 +3341,7 @@ function SerpReportModal({
         {
           company: candidate.headline ? candidate.headline.split(" at ")[1] || "TCS" : "TCS",
           title: candidate.role || "Software Engineer",
-          period: "2021 → Present",
+          period: "2021-09-01 → 2026-06-01",
           impact: "Core engineering & product development."
         }
       ];
@@ -3370,7 +3474,7 @@ function SerpReportModal({
 
             const foundedYear = liveData?.founded_year || staticInfo.founded;
             const detailsText = liveData?.snippet || liveData?.detail || staticInfo.details;
-            const sourceUrl = liveData?.source_url || staticInfo.link;
+            const directUrl = getDirectCompanyUrl(compName, liveData?.source_url || staticInfo.link);
             const isLive = liveData?.live_lookup_performed || liveData?.confidence === "high" || liveData?.confidence === "low";
             const isLoading = loadingMap[compName] && !liveData;
 
@@ -3378,56 +3482,64 @@ function SerpReportModal({
               <div
                 key={idx}
                 style={{
-                  padding: "14px 16px",
+                  padding: "16px",
                   borderRadius: "10px",
-                  background: "rgba(17, 25, 35, 0.8)",
-                  border: "1px solid rgba(56, 189, 248, 0.15)",
+                  background: "rgba(17, 25, 35, 0.9)",
+                  border: "1px solid rgba(56, 189, 248, 0.2)",
                   display: "flex",
                   flexDirection: "column",
-                  gap: "8px"
+                  gap: "10px"
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontSize: "15px", fontWeight: 700, color: "#f8fafc" }}>
+                    <span style={{ fontSize: "16px", fontWeight: 700, color: "#f8fafc" }}>
                       {compName}
                     </span>
-                    <span style={{ fontSize: "11px", color: "#10b981", background: "rgba(16, 185, 129, 0.15)", border: "1px solid rgba(16, 185, 129, 0.3)", padding: "2px 6px", borderRadius: "4px", fontWeight: 600 }}>
+                    <span style={{ fontSize: "11px", color: "#10b981", background: "rgba(16, 185, 129, 0.15)", border: "1px solid rgba(16, 185, 129, 0.3)", padding: "2px 7px", borderRadius: "4px", fontWeight: 600 }}>
                       {isLive ? "🔍 Live SerpApi Verified" : "✓ Verified Employer"}
                     </span>
                   </div>
-                  <span style={{ fontSize: "12px", fontFamily: "var(--font-mono)", color: "#38bdf8", fontWeight: 600 }}>
-                    Candidate Started: {item.period || "Current"}
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px" }}>
+                    <span style={{ color: "#94a3b8", fontWeight: 500 }}>Claimed Period:</span>
+                    <span style={{ fontWeight: 600, color: "#38bdf8", background: "rgba(56, 189, 248, 0.12)", border: "1px solid rgba(56, 189, 248, 0.25)", padding: "3px 9px", borderRadius: "6px", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+                      {formatPeriodRange(item.period)}
+                    </span>
+                  </div>
                 </div>
 
                 <div style={{ fontSize: "13px", color: "#cbd5e1" }}>
                   <strong>Claimed Position:</strong> {item.title || candidate.role}
                 </div>
 
-                <div style={{ fontSize: "12px", color: "#94a3b8", lineHeight: "1.4" }}>
+                <div style={{ fontSize: "12px", color: "#94a3b8", lineHeight: "1.5", background: "rgba(0, 0, 0, 0.2)", padding: "8px 10px", borderRadius: "6px", border: "1px solid rgba(255, 255, 255, 0.05)" }}>
                   {isLoading ? "🔍 Fetching real-time Google search evidence via SerpApi..." : detailsText}
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "4px", paddingTop: "8px", borderTop: "1px solid rgba(255, 255, 255, 0.06)", fontSize: "12px" }}>
-                  <span style={{ color: "#64748b" }}>
-                    🏛️ <strong>Founding Year:</strong> <span style={{ color: "#10b981", fontWeight: 700, fontSize: "13px" }}>{foundedYear}</span>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "2px", paddingTop: "10px", borderTop: "1px solid rgba(255, 255, 255, 0.08)", fontSize: "13px" }}>
+                  <span style={{ color: "#94a3b8" }}>
+                    🏛️ <strong>Founding Year:</strong> <span style={{ color: "#10b981", fontWeight: 700, fontSize: "14px", marginLeft: "4px" }}>{foundedYear}</span>
                   </span>
                   <a
-                    href={sourceUrl}
+                    href={directUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: "4px",
+                      gap: "5px",
                       color: "#38bdf8",
+                      background: "rgba(56, 189, 248, 0.12)",
+                      border: "1px solid rgba(56, 189, 248, 0.25)",
+                      padding: "4px 10px",
+                      borderRadius: "6px",
                       textDecoration: "none",
                       fontWeight: 600,
-                      fontSize: "12px"
+                      fontSize: "12px",
+                      transition: "all 0.2s ease"
                     }}
                   >
-                    <span>Live Evidence Link</span>
+                    <span>Visit Official Company Site</span>
                     <ExternalLink size={12} />
                   </a>
                 </div>
