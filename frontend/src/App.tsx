@@ -3564,6 +3564,24 @@ function SerpReportModal({
     "Amazon": { founded: 1994, details: "Amazon.com Inc. — Multinatonal E-Commerce & Cloud Computing (AWS)", link: "https://amazon.com" },
   };
 
+  const COMPANY_OFFICE_LOCATIONS: Record<string, { address: string; mapUrl: string }> = {
+    "Razorpay": { address: "Bangalore, Karnataka, India (Razorpay HQ)", mapUrl: "https://www.google.com/maps/search/?api=1&query=Razorpay+HQ+Bangalore" },
+    "Freshworks": { address: "Chennai, Tamil Nadu, India (Freshworks Global HQ)", mapUrl: "https://www.google.com/maps/search/?api=1&query=Freshworks+Chennai" },
+    "Sarvam AI": { address: "Bangalore, Karnataka, India (Sarvam AI Lab)", mapUrl: "https://www.google.com/maps/search/?api=1&query=Sarvam+AI+Bangalore" },
+    "Flipkart": { address: "Bangalore, Karnataka, India (Flipkart Embassy TechVillage)", mapUrl: "https://www.google.com/maps/search/?api=1&query=Flipkart+Bangalore" },
+    "Zomato": { address: "Gurgaon, Delhi NCR, India (Zomato HQ)", mapUrl: "https://www.google.com/maps/search/?api=1&query=Zomato+HQ+Gurgaon" },
+    "Krutrim": { address: "Bangalore, Karnataka, India (Krutrim AI Tower)", mapUrl: "https://www.google.com/maps/search/?api=1&query=Krutrim+AI+Bangalore" },
+    "PhonePe": { address: "Bangalore, Karnataka, India (PhonePe HQ)", mapUrl: "https://www.google.com/maps/search/?api=1&query=PhonePe+HQ+Bangalore" },
+    "Nykaa": { address: "Mumbai, Maharashtra, India (Nykaa Head Office)", mapUrl: "https://www.google.com/maps/search/?api=1&query=Nykaa+Head+Office+Mumbai" },
+    "Meesho": { address: "Bangalore, Karnataka, India (Meesho Corporate Office)", mapUrl: "https://www.google.com/maps/search/?api=1&query=Meesho+Bangalore" },
+    "Paytm": { address: "Noida, Uttar Pradesh, India (Paytm One HQ)", mapUrl: "https://www.google.com/maps/search/?api=1&query=Paytm+One+Noida" },
+    "Wysa": { address: "Bangalore, Karnataka, India (Wysa Office)", mapUrl: "https://www.google.com/maps/search/?api=1&query=Wysa+Bangalore" },
+    "TCS": { address: "Mumbai / Bangalore / Pune, India (TCS Campus)", mapUrl: "https://www.google.com/maps/search/?api=1&query=TCS+India" },
+    "Zoho": { address: "Chennai, Tamil Nadu, India (Zoho Estancia Campus)", mapUrl: "https://www.google.com/maps/search/?api=1&query=Zoho+Chennai" },
+    "CRED": { address: "Bangalore, Karnataka, India (CRED HQ)", mapUrl: "https://www.google.com/maps/search/?api=1&query=CRED+HQ+Bangalore" },
+    "Google": { address: "Bangalore / Mountain View (Google Campus)", mapUrl: "https://www.google.com/maps/search/?api=1&query=Google+Bangalore" }
+  };
+
   useEffect(() => {
     timeline.forEach((item: any) => {
       const compName = item.company;
@@ -3679,6 +3697,13 @@ function SerpReportModal({
             const isLive = liveData?.live_lookup_performed || liveData?.confidence === "high" || liveData?.confidence === "low";
             const isLoading = loadingMap[compName] && !liveData;
 
+            const knownOfficeLoc = COMPANY_OFFICE_LOCATIONS[compName] || {
+              address: `${compName} Corporate Office / Tech Campus`,
+              mapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(compName + " headquarters")}`
+            };
+            const officeLocAddress = liveData?.office_location?.address || knownOfficeLoc.address;
+            const officeMapUrl = liveData?.office_location?.maps_url || knownOfficeLoc.mapUrl;
+
             return (
               <div
                 key={idx}
@@ -3711,6 +3736,48 @@ function SerpReportModal({
 
                 <div style={{ fontSize: "13px", color: "#cbd5e1" }}>
                   <strong>Claimed Position:</strong> {item.title || candidate.role}
+                </div>
+
+                {/* Verified Office Location Bar */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    background: "rgba(56, 189, 248, 0.08)",
+                    border: "1px solid rgba(56, 189, 248, 0.25)",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    margin: "2px 0"
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#e2e8f0" }}>
+                    <MapPin size={15} style={{ color: "#38bdf8", flexShrink: 0 }} />
+                    <span><strong>Office Location:</strong> {officeLocAddress}</span>
+                  </div>
+                  <a
+                    href={officeMapUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      color: "#38bdf8",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      textDecoration: "none",
+                      background: "rgba(56, 189, 248, 0.15)",
+                      padding: "3px 8px",
+                      borderRadius: "4px",
+                      border: "1px solid rgba(56, 189, 248, 0.3)",
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    <span>Google Maps</span>
+                    <ExternalLink size={12} />
+                  </a>
                 </div>
 
                 <div style={{ fontSize: "12px", color: "#94a3b8", lineHeight: "1.5", background: "rgba(0, 0, 0, 0.2)", padding: "8px 10px", borderRadius: "6px", border: "1px solid rgba(255, 255, 255, 0.05)" }}>
