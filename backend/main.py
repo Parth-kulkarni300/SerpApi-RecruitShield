@@ -104,21 +104,35 @@ CANDIDATE_DB_PATH = os.environ.get("CANDIDATES_PATH", str(Path(__file__).parent 
 
 @app.on_event("startup")
 def startup_event():
-    import threading
-
+    import backend.ranker as ranker_mod
     logger.info("Backend starting. Attempting to load candidate database...")
-    if load_candidates_file(CANDIDATE_DB_PATH) and agent_mod.CANDIDATES:
-        # Loading the sentence-transformer model can take tens of seconds (or minutes on a
-        # cold cloud instance without a warm model cache). Doing it here synchronously used
-        # to block uvicorn from accepting *any* request, including /health, until it finished.
-        # Run it in the background instead so the server comes up immediately; endpoints that
-        # need embeddings fall back to rule-based ranking until EMBEDDINGS_LOADED flips true.
-        logger.info("Computing neural embeddings for the loaded candidate pool in the background...")
-        threading.Thread(
-            target=compute_and_persist_embeddings,
-            args=(agent_mod.CANDIDATES,),
-            daemon=True,
-        ).start()
+    
+    loaded = load_candidates_file(CANDIDATE_DB_PATH)
+    if not loaded or not agent_mod.CANDIDATES:
+        sample_p = str(Path(__file__).parent / "sample_candidates.jsonl")
+        if Path(sample_p).exists():
+            load_candidates_file(sample_p)
+
+    if agent_mod.CANDIDATES:
+        logger.info(f"Loaded {len(agent_mod.CANDIDATES)} candidates on startup.")
+        _emb_file = Path(__file__).parent / "candidate_embeddings.npy"
+        _ids_file = Path(__file__).parent / "candidate_ids.json"
+        if _emb_file.exists() and _ids_file.exists():
+            try:
+                _existing = np.load(str(_emb_file))
+                if _existing.shape[0] == len(agent_mod.CANDIDATES):
+                    with open(str(_ids_file)) as f:
+                        ids_list = json.load(f)
+                    ranker_mod.CANDIDATE_EMBEDDINGS = _existing
+                    ranker_mod.CANDIDATE_ID_TO_INDEX = {cid: idx for idx, cid in enumerate(ids_list)}
+                    ranker_mod.EMBEDDINGS_LOADED = True
+                    ranker_mod.EMBEDDINGS_COUNT = _existing.shape[0]
+                    logger.info(f"Loaded {ranker_mod.EMBEDDINGS_COUNT} precomputed 768d embeddings on startup.")
+            except Exception as e:
+                logger.error(f"Error loading precomputed embeddings: {e}")
+
+        # Compute initial 768d vector ranking so candidates are immediately available with real scores
+        rank_and_reason_candidates("Software Engineer with Python, AI and ML")
 
 @app.get("/health")
 def health_check():
