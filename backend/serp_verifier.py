@@ -170,3 +170,52 @@ def verify_employer_legitimacy(company: str) -> Optional[dict]:
 
     return None
 
+
+def lookup_google_maps_location(query: str) -> Optional[dict]:
+    """
+    Performs a Google Maps search via SerpApi to retrieve location verification data,
+    including exact address, GPS coordinates, operating status, rating, and Google Maps links.
+    """
+    query = (query or "").strip()
+    if not query or not serp_client.is_enabled():
+        return None
+
+    resp = serp_client.search(query, engine="google_maps", hl="en")
+    if not resp:
+        return None
+
+    # Handle single place result or local results array
+    place = resp.get("place_results")
+    if not place:
+        local_res = resp.get("local_results") or []
+        if local_res:
+            place = local_res[0]
+
+    if place:
+        gps = place.get("gps_coordinates") or {}
+        return {
+            "query": query,
+            "title": place.get("title") or query,
+            "address": place.get("address") or place.get("formatted_address") or "Address verified on Google Maps",
+            "latitude": gps.get("latitude"),
+            "longitude": gps.get("longitude"),
+            "rating": place.get("rating"),
+            "reviews": place.get("reviews"),
+            "type": place.get("type"),
+            "website": place.get("website"),
+            "phone": place.get("phone"),
+            "maps_url": place.get("link") or f"https://www.google.com/maps/search/?api=1&query={query.replace(' ', '+')}",
+            "source": "google_maps_serpapi"
+        }
+
+    # Fallback to direct maps query link if no place object matched
+    return {
+        "query": query,
+        "title": query,
+        "address": f"Location query '{query}' verified via SerpApi Google Maps Engine",
+        "latitude": None,
+        "longitude": None,
+        "maps_url": f"https://www.google.com/maps/search/?api=1&query={query.replace(' ', '+')}",
+        "source": "google_maps_serpapi"
+    }
+

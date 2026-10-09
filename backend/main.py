@@ -608,6 +608,26 @@ def serpapi_status():
         "account": serp_client.account_info(),
     }
 
+@app.get("/serpapi/location")
+def serpapi_location(query: str):
+    """Looks up location details (GPS coordinates, full address, Google Maps link) via SerpApi Google Maps engine."""
+    from backend.serp_verifier import lookup_google_maps_location
+    if not query or not query.strip():
+        raise HTTPException(status_code=400, detail="Provide a location or company query.")
+    loc_data = lookup_google_maps_location(query.strip())
+    if loc_data:
+        return {"status": "success", "data": loc_data}
+    return {
+        "status": "fallback",
+        "data": {
+            "query": query,
+            "title": query,
+            "address": f"Location '{query}' (Google Maps)",
+            "maps_url": f"https://www.google.com/maps/search/?api=1&query={query.replace(' ', '+')}",
+            "source": "google_maps_fallback"
+        }
+    }
+
 @app.get("/serpapi/verify_company")
 def serpapi_verify_company(name: str):
     """Looks up an employer's founding year live via SerpApi (Google Knowledge Graph) and live news

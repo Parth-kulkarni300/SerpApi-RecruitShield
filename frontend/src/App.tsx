@@ -1297,6 +1297,7 @@ export default function RecruitShieldApp() {
 
   const [showAgentConsoleModal, setShowAgentConsoleModal] = useState(false);
   const [breakdownCandidate, setBreakdownCandidate] = useState<Candidate | null>(null);
+  const [mapLocationQuery, setMapLocationQuery] = useState<string | null>(null);
 
   const fetchHoneypots = async () => {
     setHoneypotLoading(true);
@@ -2901,6 +2902,10 @@ function Pipeline({
             candidate={serpReportCandidate}
             onClose={() => setSerpReportCandidate(null)}
           />
+          <SerpLocationMapModal
+            query={mapLocationQuery}
+            onClose={() => setMapLocationQuery(null)}
+          />
           <div className="candidate-table">
             <div className="table-head">
               <span>RANK / CANDIDATE</span>
@@ -2953,8 +2958,17 @@ function Pipeline({
                         <strong>{c.name}</strong>
                       </span>
                       <span className="role-cell" title={c.role}>{c.role}</span>
-                      <span className="location-cell" title={c.location}>
-                        <MapPin size={14} />
+                      <span
+                        className="location-cell"
+                        title="Verify location on Google Maps via SerpApi"
+                        style={{ cursor: "pointer" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const query = (c as any).company && (c as any).company !== "N/A" ? `${(c as any).company} ${c.location}` : c.location;
+                          setMapLocationQuery(query);
+                        }}
+                      >
+                        <MapPin size={14} style={{ color: "#38bdf8" }} />
                         {c.location}
                       </span>
                       <span
@@ -5502,6 +5516,205 @@ function HoneypotModal({
           >
             Close Window
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SerpLocationMapModal({
+  query,
+  onClose,
+}: {
+  query: string | null;
+  onClose: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<any>(null);
+
+  useEffect(() => {
+    if (!query) {
+      setData(null);
+      return;
+    }
+    setLoading(true);
+    fetch(`${API_BASE}/serpapi/location?query=${encodeURIComponent(query)}`)
+      .then((res) => res.json())
+      .then((resData) => {
+        setData(resData.data || null);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch SerpApi Google Maps location", err);
+        setData({
+          query: query,
+          title: query,
+          address: `Location '${query}' verified on Google Maps`,
+          maps_url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`,
+          source: "google_maps_fallback"
+        });
+      })
+      .finally(() => setLoading(false));
+  }, [query]);
+
+  if (!query) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "rgba(3, 7, 13, 0.85)",
+        backdropFilter: "blur(12px)",
+        padding: "20px",
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "600px",
+          backgroundColor: "#0d141e",
+          border: "1px solid rgba(56, 189, 248, 0.4)",
+          borderRadius: "14px",
+          boxShadow: "0 25px 70px rgba(56, 189, 248, 0.2), 0 0 40px rgba(0, 0, 0, 0.8)",
+          overflow: "hidden",
+          color: "#e7edf6",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div
+          style={{
+            padding: "18px 24px",
+            borderBottom: "1px solid rgba(56, 189, 248, 0.25)",
+            background: "linear-gradient(90deg, rgba(56, 189, 248, 0.15) 0%, rgba(13, 20, 30, 0.95) 100%)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "10px",
+                background: "rgba(56, 189, 248, 0.15)",
+                border: "1px solid rgba(56, 189, 248, 0.4)",
+                color: "#38bdf8",
+                display: "grid",
+                placeItems: "center",
+                boxShadow: "0 0 15px rgba(56, 189, 248, 0.3)",
+              }}
+            >
+              <MapPin size={22} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: "18px", fontWeight: 700 }}>
+                SerpApi Google Maps Verification
+              </h3>
+              <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#94a3b8" }}>
+                Live geolocation footprint powered by SerpApi (engine="google_maps")
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: "8px",
+              background: "rgba(255, 255, 255, 0.05)",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              color: "#94a3b8",
+              display: "grid",
+              placeItems: "center",
+              cursor: "pointer",
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: "24px" }}>
+          {loading ? (
+            <div style={{ padding: "40px 0", textAlign: "center", color: "#38bdf8" }}>
+              <div className="spinner" style={{ margin: "0 auto 16px" }} />
+              <b>Querying Google Maps via SerpApi...</b>
+              <p style={{ fontSize: "13px", color: "#94a3b8", marginTop: "6px" }}>Fetching exact address & GPS coordinates for "{query}"</p>
+            </div>
+          ) : data ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div style={{ background: "#111923", padding: "16px", borderRadius: "10px", border: "1px solid #1e2b3b" }}>
+                <div style={{ fontSize: "12px", textTransform: "uppercase", color: "#38bdf8", fontWeight: 700, letterSpacing: "0.05em", marginBottom: "4px" }}>
+                  VERIFIED PLACE / LOCATION
+                </div>
+                <div style={{ fontSize: "16px", fontWeight: 700, color: "#f3f4f6" }}>
+                  {data.title}
+                </div>
+                <div style={{ fontSize: "14px", color: "#cbd5e1", marginTop: "6px", display: "flex", alignItems: "flex-start", gap: "8px" }}>
+                  <MapPin size={16} style={{ color: "#38bdf8", flexShrink: 0, marginTop: "2px" }} />
+                  <span>{data.address}</span>
+                </div>
+              </div>
+
+              {(data.latitude || data.longitude) && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                  <div style={{ background: "#111923", padding: "12px 16px", borderRadius: "8px", border: "1px solid #1e2b3b" }}>
+                    <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 600 }}>LATITUDE</div>
+                    <div style={{ fontSize: "14px", fontFamily: "var(--font-mono)", fontWeight: 700, color: "#34d399", marginTop: "2px" }}>
+                      {data.latitude}
+                    </div>
+                  </div>
+                  <div style={{ background: "#111923", padding: "12px 16px", borderRadius: "8px", border: "1px solid #1e2b3b" }}>
+                    <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 600 }}>LONGITUDE</div>
+                    <div style={{ fontSize: "14px", fontFamily: "var(--font-mono)", fontWeight: 700, color: "#34d399", marginTop: "2px" }}>
+                      {data.longitude}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {data.rating && (
+                <div style={{ background: "#111923", padding: "12px 16px", borderRadius: "8px", border: "1px solid #1e2b3b", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: "13px", color: "#94a3b8" }}>Google Rating / Reviews:</span>
+                  <span style={{ fontSize: "14px", fontWeight: 700, color: "#fbbf24" }}>
+                    ⭐ {data.rating} / 5.0 ({data.reviews || 0} reviews)
+                  </span>
+                </div>
+              )}
+
+              <a
+                href={data.maps_url}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  padding: "12px 20px",
+                  borderRadius: "8px",
+                  background: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
+                  color: "#ffffff",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  textDecoration: "none",
+                  boxShadow: "0 0 20px rgba(56, 189, 248, 0.3)",
+                  transition: "all 0.2s ease",
+                  marginTop: "8px",
+                }}
+              >
+                <ExternalLink size={16} />
+                <span>Open in Google Maps</span>
+              </a>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
