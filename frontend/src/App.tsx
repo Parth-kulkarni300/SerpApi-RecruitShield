@@ -771,9 +771,11 @@ export default function RecruitShieldApp() {
   );
 
   // API: Fetch shortlist
-  const fetchShortlist = async (p = 1) => {
+  const fetchShortlist = async (p = 1, customJd?: string) => {
     try {
-      const res = await fetch(`${API_BASE}/shortlist?page=${p}&limit=50`);
+      const activeJd = customJd !== undefined ? customJd : jd;
+      const url = `${API_BASE}/shortlist?page=${p}&limit=50${activeJd ? "&jd=" + encodeURIComponent(activeJd) : ""}`;
+      const res = await fetch(url);
       const data = await res.json();
       
       if (data.stats) {

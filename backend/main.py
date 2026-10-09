@@ -432,10 +432,16 @@ CRITICAL INSTRUCTIONS:
 import math
 
 @app.get("/shortlist")
-def get_shortlist(page: int = 1, limit: int = 50):
+def get_shortlist(page: int = 1, limit: int = 50, jd: Optional[str] = None):
     """Fetches the ranked candidate list with pagination support and KPI stats."""
     import backend.agent as agent_mod
     
+    # If a custom JD is passed or if shortlist is empty, run 768d vector ranking!
+    if jd or not agent_mod.ACTIVE_SHORTLIST:
+        jd_query = jd or "Software Engineer with Python, AI and ML"
+        if agent_mod.CANDIDATES:
+            rank_and_reason_candidates(jd_query)
+
     total_candidates = agent_mod.TOTAL_INITIAL_CANDIDATES if agent_mod.TOTAL_INITIAL_CANDIDATES > 0 else len(agent_mod.CANDIDATES)
     honeypots = len(agent_mod.HONEYPOT_CANDIDATES) if hasattr(agent_mod, "HONEYPOT_CANDIDATES") and agent_mod.HONEYPOT_CANDIDATES else max(0, total_candidates - len(agent_mod.CANDIDATES))
     
@@ -448,23 +454,8 @@ def get_shortlist(page: int = 1, limit: int = 50):
         unaligned_jd_count = 0
         
     shortlisted_count = getattr(agent_mod, "SHORTLISTED_COUNT", 0)
-    
-    source_pool = agent_mod.ACTIVE_SHORTLIST if agent_mod.ACTIVE_SHORTLIST else [
-        {
-            "rank": idx + 1,
-            "candidate_id": c.get("candidate_id", f"C-{idx}"),
-            "name": c.get("profile", {}).get("anonymized_name", "Candidate"),
-            "headline": c.get("profile", {}).get("headline", ""),
-            "years_exp": c.get("profile", {}).get("years_of_experience", 0.0),
-            "location": c.get("profile", {}).get("location", ""),
-            "current_title": c.get("profile", {}).get("current_title", ""),
-            "current_company": c.get("profile", {}).get("current_company", ""),
-            "score": 0.85,
-            "reasoning": "Candidate active in screening pool. Run agent to compute JD match score.",
-            "candidate_raw": c
-        }
-        for idx, c in enumerate(agent_mod.CANDIDATES)
-    ]
+    source_pool = agent_mod.ACTIVE_SHORTLIST if agent_mod.ACTIVE_SHORTLIST else []
+
     
     total_items = len(source_pool)
     
@@ -994,6 +985,10 @@ async def upload_job_description(file: UploadFile = File(...)):
         locations = extract_locations_from_jd(text)
         work_modes = extract_work_modes_from_jd(text)
         
+        # Automatically run 768d vector model candidate ranking against the uploaded JD!
+        if text and agent_mod.CANDIDATES:
+            rank_and_reason_candidates(text)
+            
         return {
             "text": text,
             "filename": file.filename,
@@ -1009,3 +1004,21 @@ async def upload_job_description(file: UploadFile = File(...)):
     except Exception as e:
         logger.error(f"Error parsing file {file.filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to parse document: {str(e)}")
+
+class RankJDRequest(BaseModel):
+    job_description: str
+    top_n: Optional[int] = 50
+
+@app.post("/rank")
+def rank_candidates_endpoint(req: RankJDRequest):
+    """Ranks candidates against a provided job description using 768d BGE vector embeddings."""
+    if not agent_mod.CANDIDATES:
+        load_candidates_file(CANDIDATE_DB_PATH)
+    rank_and_reason_candidates(req.job_description, top_n=req.top_n or 50)
+    return {
+        "status": "success",
+        "job_description": req.job_description,
+        "count": len(agent_mod.ACTIVE_SHORTLIST),
+        "shortlist": agent_mod.ACTIVE_SHORTLIST
+    }
+
