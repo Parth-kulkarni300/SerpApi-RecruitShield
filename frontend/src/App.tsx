@@ -1262,14 +1262,28 @@ export default function RecruitShieldApp() {
     }
   };
 
+  const fetchWithRetry = async (url: string, options?: RequestInit, retries = 4, delay = 3000): Promise<Response> => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const res = await fetch(url, options);
+        if (res.ok || res.status === 404) return res;
+      } catch (err) {
+        if (i === retries - 1) throw err;
+        setDemoLogs((prev) => [...prev, `[SERVER] Waking up backend engine on Render... (Attempt ${i + 1}/${retries})`]);
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+    return fetch(url, options);
+  };
+
   const handleLoadDemoDataset = async () => {
     await startIngestionPipeline(
       "Demo Dataset",
       "[INGEST] Parsing sample_candidates.jsonl bundle (14 candidate profiles)...",
       async () => {
-        let res = await fetch(`${API_BASE}/load_demo`, { method: "POST" });
+        let res = await fetchWithRetry(`${API_BASE}/load_demo`, { method: "POST" });
         if (res.status === 404) {
-          res = await fetch(`${API_BASE}/load`, { method: "POST" });
+          res = await fetchWithRetry(`${API_BASE}/load`, { method: "POST" });
         }
         const data = await res.json();
         if (res.ok && (data.status === "success" || data.count > 0)) {
