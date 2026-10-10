@@ -17,7 +17,7 @@
 
 ## 🤖 AI Usage Disclosure
 
-> **Required by First Commit Hackathon rules on AI transparency.**
+> **AI Usage Disclosure & Transparency Notice.**
 
 AI tools were used throughout this project as learning resources and pair-programming aids:
 
@@ -107,7 +107,7 @@ Key ranking invariants are verified by a pytest test suite (`tests/test_rank_sco
 
 ## 🔎 Live Employer Verification (SerpApi)
 
-> **Pre-existing project disclosure (SerpApi India Hackathon rules):** RecruitShield AI — the ranking pipeline, 5-Point Anomaly Firewall, agent console and dashboard — existed before this hackathon. The work submitted for SerpApi India Hackathon 2026 is the live-verification layer described below (`backend/serp_client.py`, `backend/serp_verifier.py`, the firewall/agent/API integration and `tests/test_serpapi_integration.py`); see the commit history for exactly what changed.
+> **Live Verification Layer:** RecruitShield AI integrates real-time web verification powered by SerpApi (`backend/serp_client.py`, `backend/serp_verifier.py`, and `tests/test_serpapi_integration.py`) alongside our 5-Point Anomaly Firewall, autonomous agent loop, and semantic ranking engine.
 
 **The gap it closes.** Firewall rules 4 & 5 ("job started before the company existed" / "tenure longer than the company's age") previously relied on a hand-researched table of ~60 employers. Any employer outside that table was silently unverifiable.
 

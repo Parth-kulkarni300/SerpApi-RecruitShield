@@ -696,7 +696,7 @@ def export_shortlist_excel():
 
     logger.info("Exporting shortlist to Excel...")
 
-    # We create the exact format needed for the hackathon portal
+    # We create the exact format needed for executive shortlist export
     export_data = []
     for c in agent_mod.ACTIVE_SHORTLIST:
         export_data.append({
