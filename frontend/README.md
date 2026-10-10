@@ -1,11 +1,9 @@
 # RecruitShield AI — Frontend
 
-> 🏆 Built for First Commit Hackathon 2026 — Team Beginner's Paradise
-
-React 19 + TypeScript + Vite dashboard for the RecruitShield AI autonomous candidate screening platform.
+React 19 + TypeScript + Vite dashboard for the RecruitShield AI autonomous candidate screening platform with live SerpApi Google Knowledge Graph & Maps verification.
 
 ## 🚀 Live Demo
-[beginner-s-paradise-recruitshield.vercel.app](https://beginner-s-paradise-recruitshield.vercel.app)
+[serp-api-recruit-shield.vercel.app](https://serp-api-recruit-shield.vercel.app)
 
 ## 🛠️ Tech Stack
 - **React 19** + **TypeScript** — Component-based UI

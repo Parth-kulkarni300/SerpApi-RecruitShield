@@ -1,5 +1,5 @@
 """
-rank.py — Beginner's Paradise CLI Tool
+rank.py — RecruitShield AI CLI Tool
 Run the candidate discovery and ranking pipeline from the command line.
 
 Usage:
@@ -22,7 +22,7 @@ except ImportError:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Beginner's Paradise — Candidate Discovery & Ranking CLI Tool"
+        description="RecruitShield AI — Candidate Discovery & Ranking CLI Tool"
     )
     parser.add_argument(
         "--candidates",

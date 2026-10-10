@@ -1,9 +1,6 @@
-# RecruitShield AI — Autonomous Recruiter Co-Pilot
+# RecruitShield AI — Autonomous Recruiter Co-Pilot with Live SerpApi Verification
 
-> 🏆 **Originally built for First Commit Hackathon 2026** — *"Learning is more important than perfection."*
-> 🔎 **Extended for SerpApi India Hackathon 2026** with live, evidence-cited employer verification — see [Live Employer Verification](#-live-employer-verification-serpapi).
-
-**RecruitShield AI** is an intelligent candidate discovery and integrity auditing platform that takes a raw candidate database and produces a bias-free, fraud-scrubbed, semantically-ranked shortlist — all powered by an autonomous AI agent loop.
+**RecruitShield AI** is an intelligent candidate discovery, integrity auditing, and live employer verification platform that takes a raw candidate database and produces a bias-free, fraud-scrubbed, semantically-ranked shortlist — powered by an autonomous AI agent loop and live Google Knowledge Graph & Google Maps verification via SerpApi.
 
 ---
 
@@ -11,10 +8,10 @@
 
 | Service | URL |
 |---|---|
-| 🚀 Recruiter Dashboard (Vercel) | [beginner-s-paradise-recruitshield.vercel.app](https://beginner-s-paradise-recruitshield.vercel.app) |
-| ⚙️ Backend API (Render) | [beginner-s-paradise-recruitshield.onrender.com](https://beginner-s-paradise-recruitshield.onrender.com) |
-| 📖 Interactive API Docs | [/docs](https://beginner-s-paradise-recruitshield.onrender.com/docs) |
-| 🟢 Health Check | [/health](https://beginner-s-paradise-recruitshield.onrender.com/health) |
+| 🚀 Recruiter Dashboard (Vercel) | [serp-api-recruit-shield.vercel.app](https://serp-api-recruit-shield.vercel.app) |
+| ⚙️ Backend API (Render) | [serpapi-recruitshield.onrender.com](https://serpapi-recruitshield.onrender.com) |
+| 📖 Interactive API Docs | [/docs](https://serpapi-recruitshield.onrender.com/docs) |
+| 🟢 Health Check | [/health](https://serpapi-recruitshield.onrender.com/health) |
 
 ---
 
@@ -279,9 +276,9 @@ This was our team's first time building an end-to-end AI-powered full-stack prod
 
 ## 👥 Team
 
-**Team Beginner's Paradise**
-- Parth Kulkarni — Full-stack development, agent architecture
-- Ishika Mahadar - Ranking pipeline
+**RecruitShield AI Team**
+- Parth Kulkarni — Full-stack development, agent architecture, SerpApi verification layer
+- Ishika Mahadar — Ranking pipeline & verification logic
 
 ---
 
