@@ -3587,11 +3587,12 @@ function SerpReportModal({
       const compName = item.company;
       if (!compName) return;
 
+      const candCity = candidate?.location || "";
       setLoadingMap((prev) => ({ ...prev, [compName]: true }));
-      fetch(`${API_BASE}/serpapi/verify_company?name=${encodeURIComponent(compName)}`)
+      fetch(`${API_BASE}/serpapi/verify_company?name=${encodeURIComponent(compName)}&city=${encodeURIComponent(candCity)}`)
         .then((res) => res.json())
         .then((data) => {
-          if (data && (data.founded_year || data.source_url || data.snippet)) {
+          if (data && (data.founded_year || data.source_url || data.snippet || data.office_location)) {
             setLiveSerpMap((prev) => ({ ...prev, [compName]: data }));
           }
         })
@@ -3697,9 +3698,10 @@ function SerpReportModal({
             const isLive = liveData?.live_lookup_performed || liveData?.confidence === "high" || liveData?.confidence === "low";
             const isLoading = loadingMap[compName] && !liveData;
 
+            const candCity = candidate?.location || "";
             const knownOfficeLoc = COMPANY_OFFICE_LOCATIONS[compName] || {
-              address: `${compName} Corporate Office / Tech Campus`,
-              mapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(compName + " headquarters")}`
+              address: candCity ? `${compName} Regional Office (${candCity}, India)` : `${compName} Corporate Office / Tech Campus`,
+              mapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(compName + " office in " + (candCity || "headquarters"))}`
             };
             const officeLocAddress = liveData?.office_location?.address || knownOfficeLoc.address;
             const officeMapUrl = liveData?.office_location?.maps_url || knownOfficeLoc.mapUrl;

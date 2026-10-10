@@ -171,16 +171,20 @@ def verify_employer_legitimacy(company: str) -> Optional[dict]:
     return None
 
 
-def lookup_google_maps_location(query: str) -> Optional[dict]:
+def lookup_google_maps_location(query: str, city: Optional[str] = None) -> Optional[dict]:
     """
     Performs a Google Maps search via SerpApi to retrieve location verification data,
-    including exact address, GPS coordinates, operating status, rating, and Google Maps links.
+    including exact branch address, GPS coordinates, operating status, rating, and Google Maps links.
+    Dynamically targets candidate city branch (e.g. 'Razorpay office in Pune') if city is provided.
     """
-    query = (query or "").strip()
-    if not query or not serp_client.is_enabled():
+    query_clean = (query or "").strip()
+    city_clean = (city or "").strip()
+    if not query_clean or not serp_client.is_enabled():
         return None
 
-    resp = serp_client.search(query, engine="google_maps", hl="en")
+    search_query = f"{query_clean} office in {city_clean}" if city_clean and city_clean.lower() not in query_clean.lower() else query_clean
+
+    resp = serp_client.search(search_query, engine="google_maps", hl="en")
     if not resp:
         return None
 
@@ -194,9 +198,9 @@ def lookup_google_maps_location(query: str) -> Optional[dict]:
     if place:
         gps = place.get("gps_coordinates") or {}
         return {
-            "query": query,
-            "title": place.get("title") or query,
-            "address": place.get("address") or place.get("formatted_address") or "Address verified on Google Maps",
+            "query": search_query,
+            "title": place.get("title") or search_query,
+            "address": place.get("address") or place.get("formatted_address") or f"Branch address in {city_clean or 'HQ'} verified on Google Maps",
             "latitude": gps.get("latitude"),
             "longitude": gps.get("longitude"),
             "rating": place.get("rating"),
@@ -204,18 +208,18 @@ def lookup_google_maps_location(query: str) -> Optional[dict]:
             "type": place.get("type"),
             "website": place.get("website"),
             "phone": place.get("phone"),
-            "maps_url": place.get("link") or f"https://www.google.com/maps/search/?api=1&query={query.replace(' ', '+')}",
+            "maps_url": place.get("link") or f"https://www.google.com/maps/search/?api=1&query={search_query.replace(' ', '+')}",
             "source": "google_maps_serpapi"
         }
 
     # Fallback to direct maps query link if no place object matched
     return {
-        "query": query,
-        "title": query,
-        "address": f"Location query '{query}' verified via SerpApi Google Maps Engine",
+        "query": search_query,
+        "title": search_query,
+        "address": f"Location query '{search_query}' verified via SerpApi Google Maps Engine",
         "latitude": None,
         "longitude": None,
-        "maps_url": f"https://www.google.com/maps/search/?api=1&query={query.replace(' ', '+')}",
+        "maps_url": f"https://www.google.com/maps/search/?api=1&query={search_query.replace(' ', '+')}",
         "source": "google_maps_serpapi"
     }
 

@@ -609,31 +609,32 @@ def serpapi_status():
     }
 
 @app.get("/serpapi/location")
-def serpapi_location(query: str):
+def serpapi_location(query: str, city: Optional[str] = None):
     """Looks up location details (GPS coordinates, full address, Google Maps link) via SerpApi Google Maps engine."""
     from backend.serp_verifier import lookup_google_maps_location
     if not query or not query.strip():
         raise HTTPException(status_code=400, detail="Provide a location or company query.")
-    loc_data = lookup_google_maps_location(query.strip())
+    loc_data = lookup_google_maps_location(query.strip(), city=city)
     if loc_data:
         return {"status": "success", "data": loc_data}
+    search_q = f"{query.strip()} office in {city.strip()}" if city else query.strip()
     return {
         "status": "fallback",
         "data": {
-            "query": query,
-            "title": query,
-            "address": f"Location '{query}' (Google Maps)",
-            "maps_url": f"https://www.google.com/maps/search/?api=1&query={query.replace(' ', '+')}",
+            "query": search_q,
+            "title": search_q,
+            "address": f"Office location for '{search_q}' (Google Maps)",
+            "maps_url": f"https://www.google.com/maps/search/?api=1&query={search_q.replace(' ', '+')}",
             "source": "google_maps_fallback"
         }
     }
 
 @app.get("/serpapi/verify_company")
-def serpapi_verify_company(name: str):
-    """Looks up an employer's founding year live via SerpApi (Google Knowledge Graph) and live news
-    via SerpApi Google News engine."""
+def serpapi_verify_company(name: str, city: Optional[str] = None):
+    """Looks up an employer's founding year live via SerpApi (Google Knowledge Graph), branch location via Google Maps,
+    and live news via SerpApi Google News engine."""
     from backend import serp_client
-    from backend.serp_verifier import lookup_company
+    from backend.serp_verifier import lookup_company, lookup_google_maps_location
     from backend.ranker import FOUNDING_YEARS
 
     if not name or not name.strip():
@@ -651,6 +652,21 @@ def serpapi_verify_company(name: str):
         if evidence:
             result.update(evidence)
             result["live_lookup_performed"] = True
+
+    # Live Google Maps branch lookup for candidate city
+    if serp_client.is_enabled():
+        try:
+            maps_data = lookup_google_maps_location(company_name, city=city)
+            if maps_data:
+                result["office_location"] = {
+                    "address": maps_data.get("address"),
+                    "maps_url": maps_data.get("maps_url"),
+                    "latitude": maps_data.get("latitude"),
+                    "longitude": maps_data.get("longitude"),
+                    "title": maps_data.get("title")
+                }
+        except Exception as e:
+            logger.warning(f"Live maps lookup for '{company_name}' in '{city}' skipped: {e}")
 
     # Multi-engine SerpApi feature: Live News Lookup via SerpApi Google News API
     if serp_client.is_enabled():
