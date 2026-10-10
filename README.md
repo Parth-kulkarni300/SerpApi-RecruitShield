@@ -105,30 +105,36 @@ Key ranking invariants are verified by a pytest test suite (`tests/test_rank_sco
 
 ---
 
-## 🔎 Live Employer Verification (SerpApi)
+## 🔎 Live Employer & Geolocation Verification (SerpApi Multi-Engine Integration)
 
-> **Live Verification Layer:** RecruitShield AI integrates real-time web verification powered by SerpApi (`backend/serp_client.py`, `backend/serp_verifier.py`, and `tests/test_serpapi_integration.py`) alongside our 5-Point Anomaly Firewall, autonomous agent loop, and semantic ranking engine.
+> **Live Verification Layer:** RecruitShield AI integrates real-time web verification powered by SerpApi across three Google Search engines (`backend/serp_client.py`, `backend/serp_verifier.py`, and `tests/test_serpapi_integration.py`) alongside our 5-Point Anomaly Firewall, autonomous agent loop, and semantic ranking engine.
 
-**The gap it closes.** Firewall rules 4 & 5 ("job started before the company existed" / "tenure longer than the company's age") previously relied on a hand-researched table of ~60 employers. Any employer outside that table was silently unverifiable.
+### 🌟 3 SerpApi Engines Integrated
 
-**What SerpApi does now.** For an employer that is *not* in the built-in table, the firewall asks Google (via the SerpApi `google` engine) for the company's founding year and uses the Knowledge Graph card as evidence. Every flag it raises cites its source:
+1. **Google Knowledge Graph Engine (`engine="google"`)**
+   - **Founding Year Verification:** Audits employer claims against live Google Knowledge Graph cards.
+   - **Cited Evidence:** Cites exact evidence URLs and founding dates (e.g. `[live-verified via SerpApi: https://newco.example]`).
+   - **Zero False-Positive Protection:** Only high-confidence matches (exact entity title matches) are used for purging; missing evidence defaults to "unknown", never "fraud".
 
-```
-Worked at NewCo Technologies starting in 2015, but company was founded in 2020.
-[live-verified via SerpApi: https://newco.example]
-```
+2. **Google Maps Geolocation Engine (`engine="google_maps"`)**
+   - **Dynamic Candidate-City Branch Verification:** Queries `{Company} office in {Candidate City}` to verify regional branch offices (e.g. `Razorpay office in Pune`, `Zomato office in Gurgaon`).
+   - **Full Geolocation Footprint:** Extracts verified street address, GPS coordinates (`latitude`, `longitude`), star ratings, review counts, and interactive Google Maps URLs.
 
-**Designed to avoid false purges** (a wrong flag hurts a real candidate):
-- The built-in table always wins; live lookups only fill gaps.
-- Only a **high-confidence** match — a Knowledge Graph card whose title matches the employer name — can flag a profile. Loose text-snippet matches are reported by the API as *low* confidence and never purge anyone.
-- No evidence means **"unknown"**, never "fraud".
+3. **Google News Radar Engine (`engine="google_news"`)**
+   - **Real-Time News Footprint:** Fetches live press releases and headlines for claimed employers to authenticate active corporate operations.
 
-**Built for a free quota.** Results (including empty ones) are cached on disk for 30 days, live requests are capped per process (`SERPAPI_MAX_LIVE_CALLS`, default 50), failures never crash the audit, and with no `SERPAPI_API_KEY` the app runs fully offline exactly as before.
+### 🛡️ Production & Quota Efficiency Features
+
+- **Persistent 30-Day Disk Cache:** Caches queries on disk (`.serp_cache/serp_cache.json`) so server restarts and repeat audits consume zero quota.
+- **Hard Call Budget:** `SERPAPI_MAX_LIVE_CALLS` (default `50`) caps live API calls per server process to prevent quota exhaustion.
+- **Graceful Offline Fallback:** If `SERPAPI_API_KEY` is not set, the app seamlessly degrades to the built-in reference table and local offline pipeline.
+- **Autonomous Telemetry:** Every SerpApi tool call is logged live in the **Agent Execution Console** (`/agent_logs`).
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /serpapi/status` | Is live verification active? Quota used by this process and (if available) remaining on the account. Never returns the key. |
-| `GET /serpapi/verify_company?name=<employer>` | Live founding-year lookup with evidence: year, matched entity, source link, confidence. |
+| `GET /serpapi/status` | Reports live verification status, process quota stats, account limits, and call budgets. |
+| `GET /serpapi/verify_company?name=<co>&city=<city>` | Live founding-year & Google Maps branch lookup with evidence links, ratings, and news. |
+| `GET /serpapi/location?query=<query>&city=<city>` | Direct Google Maps geolocation lookup returning address, GPS coordinates, and Google Maps URL. |
 
 Live lookups also appear in the **Agent Execution Console** (`/agent_logs`) as `SERPAPI_VERIFY` events.
 
