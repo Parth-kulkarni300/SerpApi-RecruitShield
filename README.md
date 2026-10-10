@@ -219,7 +219,7 @@ Visit: `http://localhost:5173`
 ### Run Tests
 
 ```bash
-pytest tests/ -v
+python -m pytest tests/ -v
 ```
 
 ### (Optional) Re-generate Embeddings
